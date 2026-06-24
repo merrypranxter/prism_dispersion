@@ -1,0 +1,16 @@
+{
+  "name": "prism_dispersion",
+  "version": "0.1.0",
+  "description": "Raymarched glass with per-wavelength refraction — Cauchy dispersion, Newton's prism, diamond fire, dispersive caustics. WebGL2 + GLSL, no build step.",
+  "type": "module",
+  "scripts": {
+    "serve": "python3 -m http.server 8000",
+    "test": "node tests/check-shaders.mjs",
+    "examples": "for f in examples/*.mjs; do echo \"== $f ==\"; node \"$f\"; done"
+  },
+  "keywords": ["webgl2", "glsl", "raymarching", "dispersion", "spectral", "refraction", "sdf", "prism"],
+  "license": "MIT",
+  "devDependencies": {
+    "@shaderfrog/glsl-parser": "^5.3.1"
+  }
+}

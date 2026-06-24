@@ -1,0 +1,46 @@
+{
+  "repo": "prism_dispersion",
+  "type": "spectral_generator",
+  "domain": "refraction_optics",
+  "description": "Raymarched glass with per-wavelength refraction. Cauchy dispersion: n(\u03bb)=A+B/\u03bb\u00b2. Newton's prism, diamond fire, dispersive caustics.",
+  "batch": "color_lab_lane1",
+  "consumes": [
+    "spectral_color"
+  ],
+  "consumed_by": [],
+  "archetype": "RAYMARCHED_DISPERSION",
+  "tech_stack": [
+    "webgl2",
+    "glsl",
+    "vanilla_js",
+    "spectral_integration",
+    "raymarching",
+    "sdf"
+  ],
+  "physics_pillars": [
+    "snell_law",
+    "cauchy_dispersion",
+    "fresnel_reflection",
+    "total_internal_reflection",
+    "caustics"
+  ],
+  "keywords": [
+    "prism",
+    "dispersion",
+    "refraction",
+    "cauchy",
+    "snell",
+    "diamond_fire",
+    "caustics",
+    "raymarching"
+  ],
+  "canon": {
+    "fbo_ping_pong": true,
+    "additive_blend": true,
+    "1d_ramp": "spectral_color.js",
+    "post_finisher": true
+  },
+  "priority": 4,
+  "difficulty": "hard",
+  "status": "briefed"
+}
