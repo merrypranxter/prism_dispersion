@@ -1,0 +1,115 @@
+# prism_dispersion — REPO SEED
+
+## Type
+Spectral generator (raymarched per-wavelength refraction). Heaviest of the four.
+
+## The Physics
+
+### Snell's Law
+```
+n₁·sin(θ₁) = n₂·sin(θ₂)
+```
+- n₁ = IOR of incident medium (air ≈ 1.0)
+- n₂ = IOR of refracting medium (glass, water, diamond)
+- θ₁ = angle of incidence
+- θ₂ = angle of refraction
+
+For a given wavelength λ, the refracted angle is:
+```
+sin(θ₂) = (n₁/n₂(λ)) · sin(θ₁)
+```
+
+### Cauchy Dispersion
+```
+n(λ) = A + B/λ²  (λ in µm)
+```
+- A = base refractive index (material property)
+- B = dispersion coefficient (material property)
+- λ = wavelength in micrometers
+
+Typical values:
+- Crown glass: A ≈ 1.52, B ≈ 0.004 µm²
+- Flint glass: A ≈ 1.66, B ≈ 0.01 µm² (high dispersion)
+- Diamond: A ≈ 2.42, B ≈ 0.004 µm² (high IOR + moderate dispersion = "fire")
+- Water: A ≈ 1.33, B ≈ 0.001 µm² (low dispersion, weak rainbow)
+
+### Dispersion Example (Crown Glass)
+- 380nm (violet): n = 1.52 + 0.004/(0.38)² = 1.52 + 0.0277 = 1.5477
+- 550nm (green): n = 1.52 + 0.004/(0.55)² = 1.52 + 0.0132 = 1.5332
+- 700nm (red): n = 1.52 + 0.004/(0.70)² = 1.52 + 0.0082 = 1.5282
+- Difference: Δn = 0.0195 → blue bends ~2.5% more than red
+
+### Raymarching Glass
+1. Cast ray from camera through pixel
+2. Find intersection with glass SDF (prism, sphere, gem, blob)
+3. At entry: refract ray by n(λ) for each wavelength sample
+4. Trace refracted ray through glass interior
+5. At exit: refract again by n(λ) (Snell's law, exiting)
+6. For each λ, accumulate the path color (transmission + absorption)
+7. Also compute reflection (Fresnel) at each interface
+8. Sum all λ contributions → spectrum → RGB
+
+### Fresnel Reflection (Schlick Approximation)
+```
+R(θ) = R₀ + (1 - R₀)·(1 - cos(θ))⁵
+R₀ = ((n₁ - n₂)/(n₁ + n₂))²
+```
+- At grazing angles, reflection → 1 (total reflection)
+- At normal incidence, reflection = R₀
+- For glass-air: R₀ ≈ 0.04 (4% reflection)
+- For diamond-air: R₀ ≈ 0.17 (17% reflection) — much more sparkle
+
+### Total Internal Reflection (TIR)
+When exiting a high-IOR material to low-IOR (e.g., diamond to air):
+- If sin(θ₂) > 1, TIR occurs — ray reflects instead of refracting
+- This is the source of diamond's internal sparkle
+- Critical angle: θ_c = arcsin(n₂/n₁) = arcsin(1/2.42) ≈ 24.4° for diamond
+
+### Dispersive Caustics
+Light through a dispersive medium creates caustics with rainbow fringes:
+- Each wavelength focuses at a slightly different point
+- The caustic pool is a superposition of differently-colored focal points
+- Can be approximated by photon mapping or by accumulating many raymarched samples
+
+## Per-Wavelength Raymarching Algorithm
+
+For each pixel:
+1. Cast primary ray from camera
+2. For each wavelength sample λ in [380, 700]nm (N samples):
+   a. Compute n(λ) via Cauchy
+   b. Raymarch glass SDF, find entry point
+   c. Refract ray at entry: sin(θ₂) = sin(θ₁)/n(λ)
+   d. Trace through glass interior
+   e. Refract at exit: sin(θ₂) = n(λ)·sin(θ₁)
+   f. Accumulate transmission color (with Beer-Lambert absorption)
+   g. Compute reflection at each interface (Fresnel)
+   h. Add reflected contribution (environment map or sky color)
+3. Build spectrum S(λ) from all wavelength contributions
+4. Convert to RGB via spectral_color.spectrumToRGB()
+5. Post-process: bloom, tone mapping, vignette
+
+## Parameters
+
+| Parameter | Range | Default | Description |
+|-----------|-------|---------|-------------|
+| ior_base(A) | 1.3–2.5 | 1.52 | Base refractive index |
+| dispersion(B) | 0.001–0.01 | 0.004 | Dispersion coefficient (µm²) |
+| wavelength_samples | 8–32 | 16 | Number of wavelength samples |
+| glass_shape | prism/sphere/gem/blob | prism | Glass SDF shape |
+| beam_width | 0.01–0.1 | 0.05 | Width of incident light beam |
+| mode | dark_side/diamond_fire/liquid_glass/spectral_caustics | dark_side | Aesthetic regime |
+| absorption | 0–1 | 0.1 | Glass absorption (Beer-Lambert) |
+| environment | black/gradient/sky | black | Background/environment |
+
+## Aesthetic Regimes
+
+1. **dark_side**: Single white beam, triangular prism, classic spectrum fan on pure black. The iconic Pink Floyd cover. Minimalist, high contrast.
+2. **diamond_fire**: Faceted gem (octahedron or brilliant cut), rotating slowly. TIR sparkle, dispersive flashes. High IOR (2.4), moderate dispersion. The "fire" is the rainbow sparkle from internal reflections.
+3. **liquid_glass**: A wobbling, morphing glass blob (metaball SDF). A scene or `u_source` image is refracted through it with dispersive edges. The blob deforms over time, creating shifting rainbow fringes.
+4. **spectral_caustics**: Light through a glass prism casts rainbow-fringed caustic pools on a floor. The pools shift and shimmer as the light source moves. Each pool is a focal point where different wavelengths converge differently.
+
+## Visual Targets
+- Dark side: sharp triangular prism, pure white beam entering, vivid spectrum fan exiting, black background. The spectrum should be smooth, not banded, with all colors visible.
+- Diamond fire: brilliant-cut diamond, rotating, internal rainbow flashes from TIR. The diamond should sparkle — bright white highlights plus rainbow internal reflections. Dark background, high contrast.
+- Liquid glass: a transparent, wobbling blob distorting a background image. The edges of the blob have rainbow fringes (dispersion). The blob should feel like liquid glass — thick, viscous, slow-moving.
+- Spectral caustics: bright light source, glass object, floor with rainbow caustic pools. The pools should be sharp and colorful, not blurry. The floor should be light-colored (white or gray) to show the caustics clearly.

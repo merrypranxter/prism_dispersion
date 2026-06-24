@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>spectral_color — ramp + Cauchy diagram</title>
+<style>
+  body { margin: 0; background: #0a0a0c; color: #ccc; font: 13px/1.5 monospace; padding: 24px; }
+  canvas { display: block; background: #000; margin: 8px 0 20px; border: 1px solid #222; }
+  h2 { font-size: 14px; color: #fff; margin: 18px 0 4px; }
+  label { margin-right: 16px; }
+</style>
+</head>
+<body>
+<!-- Served over HTTP so the ES-module imports resolve. -->
+<h2>1D spectral ramp — spectral_color.buildSpectralRamp()</h2>
+<canvas id="ramp" width="640" height="48"></canvas>
+
+<h2>Cauchy refraction — white beam fanning through a prism</h2>
+<div>
+  <label>A (ior base): <input id="A" type="range" min="1.3" max="2.5" step="0.01" value="1.52"> <span id="Av">1.52</span></label>
+  <label>B (dispersion): <input id="B" type="range" min="0.001" max="0.02" step="0.0005" value="0.006"> <span id="Bv">0.006</span></label>
+</div>
+<canvas id="prism" width="640" height="320"></canvas>
+
+<script type="module">
+import { buildSpectralRamp, wavelengthToRGB, LAMBDA_MIN, LAMBDA_MAX } from '../src/js/spectral_color.js';
+import { cauchyNm, snell, RAD } from '../src/js/optics.js';
+
+// --- Ramp strip ---
+(() => {
+  const c = document.getElementById('ramp'), g = c.getContext('2d');
+  const ramp = buildSpectralRamp(c.width);
+  for (let x = 0; x < c.width; x++) {
+    g.fillStyle = `rgb(${ramp[x*4]},${ramp[x*4+1]},${ramp[x*4+2]})`;
+    g.fillRect(x, 0, 1, c.height);
+  }
+})();
+
+// --- Cauchy refraction diagram ---
+const c = document.getElementById('prism'), g = c.getContext('2d');
+const A = document.getElementById('A'), B = document.getElementById('B');
+const Av = document.getElementById('Av'), Bv = document.getElementById('Bv');
+
+function draw() {
+  Av.textContent = (+A.value).toFixed(2);
+  Bv.textContent = (+B.value).toFixed(4);
+  g.clearRect(0, 0, c.width, c.height);
+
+  const apexAngle = 50 * RAD;       // prism wedge
+  const ox = 220, oy = 160;         // refraction point
+  // Incoming white beam.
+  g.strokeStyle = '#fff'; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(40, oy); g.lineTo(ox, oy); g.stroke();
+
+  // Each wavelength refracts by its own n(λ); draw the fan.
+  const thetaInc = 35 * RAD;        // angle to the prism face normal
+  for (let nm = LAMBDA_MIN; nm <= LAMBDA_MAX; nm += 5) {
+    const n = cauchyNm(+A.value, +B.value, nm);
+    const t1 = snell(1.0, n, thetaInc);   // air -> glass
+    const t2 = snell(n, 1.0, t1 + apexAngle > Math.PI/2 ? 0 : (apexAngle - t1)); // glass -> air (approx)
+    const dev = (t2 ?? 0) + thetaInc;     // rough total deviation for display
+    const [r, gn, b] = wavelengthToRGB(nm).map((v) => Math.round(Math.min(1, v) * 255));
+    g.strokeStyle = `rgb(${r},${gn},${b})`; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(ox, oy);
+    g.lineTo(ox + 380 * Math.cos(dev * 0.6), oy + 380 * Math.sin(dev * 0.6));
+    g.stroke();
+  }
+  // Prism glyph.
+  g.strokeStyle = '#445'; g.lineWidth = 1.5;
+  g.beginPath(); g.moveTo(ox-50, oy-70); g.lineTo(ox+40, oy+50); g.lineTo(ox-50, oy+50); g.closePath(); g.stroke();
+}
+A.addEventListener('input', draw); B.addEventListener('input', draw); draw();
+</script>
+</body>
+</html>
