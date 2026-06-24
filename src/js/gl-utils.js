@@ -78,7 +78,11 @@ export function createRenderTarget(gl, w, h) {
   const fbo = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+  const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  if (status !== gl.FRAMEBUFFER_COMPLETE) {
+    throw new Error(`RGBA16F render target incomplete (status 0x${status.toString(16)}) — this device may not support rendering to half-float textures.`);
+  }
   return { fbo, tex, w, h };
 }
 

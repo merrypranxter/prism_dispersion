@@ -39,16 +39,19 @@ async function main() {
   const params = defaultParams();
   applyModeDefaults(params, 'dark_side');
 
-  // Shared GLSL prelude prepended to every engine fragment shader.
-  const common = await loadShader('common.glsl');
-  const postFrag = await loadShader('post.glsl');
+  // Fetch every shader in parallel to cut startup latency.
+  const engineKeys = Array.from(new Set(Object.values(ENGINES)));
+  const [common, postFrag, ...engineFrags] = await Promise.all([
+    loadShader('common.glsl'),
+    loadShader('post.glsl'),
+    ...engineKeys.map((engine) => loadShader(`${engine}.glsl`)),
+  ]);
 
   // Compile every engine up front (there are only four).
   const programs = {};
-  for (const engine of new Set(Object.values(ENGINES))) {
-    const frag = await loadShader(`${engine}.glsl`);
-    programs[engine] = createProgram(gl, FULLSCREEN_VERT, injectCommon(frag, common));
-  }
+  engineKeys.forEach((engine, i) => {
+    programs[engine] = createProgram(gl, FULLSCREEN_VERT, injectCommon(engineFrags[i], common));
+  });
   const postProgram = createProgram(gl, FULLSCREEN_VERT, postFrag);
 
   const ramp = createSpectralRampTexture(gl, 256);
@@ -56,8 +59,11 @@ async function main() {
   let dpr = Math.min(window.devicePixelRatio || 1, 2);
   let pp; // ping-pong HDR buffers
   let frame = 0; // progressive accumulation counter
+  let needsResize = true; // only touch the DOM/GL sizing when this is set
 
   function resize() {
+    if (!needsResize) return;
+    needsResize = false;
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     const w = Math.floor(canvas.clientWidth * dpr);
     const h = Math.floor(canvas.clientHeight * dpr);
@@ -72,7 +78,7 @@ async function main() {
 
   // Any input that changes the image restarts accumulation.
   const input = attachControls(canvas, params, resetAccum);
-  window.addEventListener('resize', resize);
+  window.addEventListener('resize', () => { needsResize = true; });
 
   // Static fullscreen-triangle VAO (no buffers; uses gl_VertexID).
   const vao = gl.createVertexArray();

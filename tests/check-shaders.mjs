@@ -34,8 +34,11 @@ for (const e of engines) {
   try {
     // Silence the parser's unknown-builtin warnings; keep real errors.
     const warn = console.warn; console.warn = () => {};
-    parser.parse(BUILTINS + pp);
-    console.warn = warn;
+    try {
+      parser.parse(BUILTINS + pp);
+    } finally {
+      console.warn = warn;   // always restore, even if parse throws
+    }
     console.log(`  ok   ${e}.glsl`);
   } catch (err) {
     failed++;

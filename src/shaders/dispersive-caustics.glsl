@@ -9,9 +9,13 @@ precision highp float;
 // an interference field that is sampled per-wavelength with a dispersion-scaled
 // offset — bluer wavelengths deviate more, producing the rainbow fringes.
 
+// Prism spin, computed once per frame in main() (mapGlass runs thousands of
+// times per pixel — keep the rot2() construction out of it).
+mat2 gPrismRot;
+
 float mapGlass(vec3 p) {
   vec3 q = p - vec3(0.0, 0.45, 0.0);
-  q.xz = rot2(u_time * 0.2) * q.xz;
+  q.xz = gPrismRot * q.xz;
   return sdTriPrism(q, vec2(0.55, 0.55));
 }
 float mapFloor(vec3 p) { return p.y + 1.2; }
@@ -46,6 +50,7 @@ float marchGlass(vec3 ro, vec3 rd, out vec3 nor) {
 }
 
 void main() {
+  gPrismRot = rot2(u_time * 0.2);
   vec2 uv = (gl_FragCoord.xy * 2.0 - u_resolution.xy) / u_resolution.y;
 
   vec3 lightPos = vec3((u_mouse.x - 0.5) * 3.0, 2.4, (u_mouse.y - 0.5) * 2.0 - 0.5);
@@ -98,7 +103,9 @@ void main() {
     for (int i = 0; i < 64; i++) {
       if (i >= N) break;
       float nm; float n = iorForSample(i, N, nm);
-      float dev = (n - nMid) / max(u_dispersion, 1e-4) * 0.018;
+      // Fringe displacement scales with (n(λ) - n_mid), so it grows with the
+      // dispersion control (B). Don't divide by u_dispersion — that cancels B.
+      float dev = (n - nMid) * 3.5;
       caustic += wavelengthRGB(nm) * causticField(q + vec2(dev, dev * 0.5));
     }
     caustic *= 3.2 / float(N);

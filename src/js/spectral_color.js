@@ -47,6 +47,7 @@ export function wavelengthToRGB(nm) {
  */
 export function spectrumToRGB(samples) {
   const n = samples.length;
+  if (n === 0) return [0, 0, 0];
   let r = 0, g = 0, b = 0;
   for (let i = 0; i < n; i++) {
     const t = n === 1 ? 0.5 : i / (n - 1);
@@ -70,7 +71,7 @@ export function spectrumToRGB(samples) {
 export function buildSpectralRamp(width = 256) {
   const data = new Uint8Array(width * 4);
   for (let i = 0; i < width; i++) {
-    const t = i / (width - 1);
+    const t = width === 1 ? 0.5 : i / (width - 1);
     const nm = LAMBDA_MIN + t * (LAMBDA_MAX - LAMBDA_MIN);
     const [r, g, b] = wavelengthToRGB(nm);
     data[i * 4 + 0] = Math.round(clamp01(r) * 255);

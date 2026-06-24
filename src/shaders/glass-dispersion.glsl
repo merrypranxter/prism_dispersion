@@ -8,11 +8,14 @@ precision highp float;
 // different path, the environment sampled per wavelength differs at the edges,
 // producing rainbow fringes (honest dispersion, not a post-effect).
 
+// Blob centers, computed once per frame in main() (map runs thousands of times
+// per pixel — keep the sin/cos out of it).
+vec3 gC1, gC2, gC3;
+
 float map(vec3 p) {
-  float t = u_time * 0.5;
-  float b = sdSphere(p - vec3(sin(t) * 0.25, cos(t * 0.7) * 0.20, 0.0), 0.55);
-  b = smin(b, sdSphere(p - vec3(-sin(t * 1.3) * 0.30, sin(t * 0.5) * 0.25, cos(t) * 0.20), 0.45), 0.30);
-  b = smin(b, sdSphere(p - vec3(cos(t * 0.9) * 0.30, -0.20, sin(t * 1.1) * 0.30), 0.40), 0.30);
+  float b = sdSphere(p - gC1, 0.55);
+  b = smin(b, sdSphere(p - gC2, 0.45), 0.30);
+  b = smin(b, sdSphere(p - gC3, 0.40), 0.30);
   return b;
 }
 
@@ -74,6 +77,11 @@ vec3 shade(vec3 ro, vec3 rd) {
 }
 
 void main() {
+  float t = u_time * 0.5;
+  gC1 = vec3(sin(t) * 0.25, cos(t * 0.7) * 0.20, 0.0);
+  gC2 = vec3(-sin(t * 1.3) * 0.30, sin(t * 0.5) * 0.25, cos(t) * 0.20);
+  gC3 = vec3(cos(t * 0.9) * 0.30, -0.20, sin(t * 1.1) * 0.30);
+
   vec2 uv = (gl_FragCoord.xy * 2.0 - u_resolution.xy) / u_resolution.y;
 
   // Orbit camera with the mouse.

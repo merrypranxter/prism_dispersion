@@ -84,11 +84,16 @@ void main() {
     if (d1 == vec2(0.0)) continue;
     d1 = normalize(d1);
 
-    // March inside to the right face.
+    // March inside to the right face. rayLineT uses the *infinite* line through
+    // apex..br, so guard against an "exit" that lands outside the face segment
+    // (i.e. the ray actually leaves through the base) and fall back to the base.
     float tR = rayLineT(entry, d1, apex, br);
-    if (tR <= 0.0) tR = rayLineT(entry, d1, bl, br); // fallback: base
-    if (tR <= 0.0) continue;
     vec2 exit = entry + d1 * tR;
+    if (tR <= 0.0 || exit.y < -H || exit.y > H) {
+      tR = rayLineT(entry, d1, bl, br); // fallback: base
+      exit = entry + d1 * tR;
+    }
+    if (tR <= 0.0) continue;
 
     // Exit: glass -> air through the right face.
     vec2 d2 = refract(d1, -nR, n / 1.0);

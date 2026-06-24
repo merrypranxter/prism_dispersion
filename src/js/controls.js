@@ -12,10 +12,15 @@ export function attachControls(canvas, params, onChange) {
 
   const notify = () => onChange && onChange();
 
+  // Cache the canvas rect; querying it per pointermove forces layout reflow.
+  let rect = canvas.getBoundingClientRect();
+  const refreshRect = () => { rect = canvas.getBoundingClientRect(); };
+  window.addEventListener('resize', refreshRect);
+  window.addEventListener('scroll', refreshRect, { passive: true });
+
   canvas.addEventListener('pointermove', (e) => {
-    const r = canvas.getBoundingClientRect();
-    state.mouse[0] = (e.clientX - r.left) / r.width;
-    state.mouse[1] = 1.0 - (e.clientY - r.top) / r.height;
+    state.mouse[0] = (e.clientX - rect.left) / rect.width;
+    state.mouse[1] = 1.0 - (e.clientY - rect.top) / rect.height;
     notify();
   });
 

@@ -8,9 +8,12 @@ precision highp float;
 // before escaping; each bounce is refracted per-wavelength, so the escaping
 // light flashes rainbow "fire". Strong Fresnel reflection gives white sparkle.
 
+// Combined gem rotation, computed once per frame in main() (map runs thousands
+// of times per pixel — keep the sin/cos out of it).
+mat3 gRot;
+
 float map(vec3 p) {
-  p = rotY(u_time * 0.45) * p;
-  p = rotX(0.5) * p;
+  p = gRot * p;
   float o = sdOctahedron(p, 0.98);
   o = max(o, p.y - 0.40);     // flat table on top
   return o;
@@ -79,6 +82,7 @@ vec3 shade(vec3 ro, vec3 rd) {
 }
 
 void main() {
+  gRot = rotX(0.5) * rotY(u_time * 0.45);   // p = rotX*(rotY*p)
   vec2 uv = (gl_FragCoord.xy * 2.0 - u_resolution.xy) / u_resolution.y;
 
   vec2 m = (u_mouse - 0.5) * vec2(6.2, 2.6);
